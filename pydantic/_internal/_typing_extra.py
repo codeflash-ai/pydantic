@@ -13,7 +13,15 @@ from functools import partial
 from types import GetSetDescriptorType
 from typing import TYPE_CHECKING, Any, Final
 
-from typing_extensions import Annotated, Literal, TypeAliasType, TypeGuard, deprecated, get_args, get_origin
+from typing_extensions import (
+    Annotated,
+    Literal,
+    TypeAliasType,
+    TypeGuard,
+    deprecated,
+    get_args,
+    get_origin,
+)
 
 if TYPE_CHECKING:
     from ._dataclasses import StandardDataclass
@@ -62,12 +70,14 @@ else:
 
 
 LITERAL_TYPES: set[Any] = {Literal}
-if hasattr(typing, 'Literal'):
+if hasattr(typing, "Literal"):
     LITERAL_TYPES.add(typing.Literal)  # type: ignore
 
 # Check if `deprecated` is a type to prevent errors when using typing_extensions < 4.9.0
-DEPRECATED_TYPES: tuple[Any, ...] = (deprecated,) if isinstance(deprecated, type) else ()
-if hasattr(warnings, 'deprecated'):
+DEPRECATED_TYPES: tuple[Any, ...] = (
+    (deprecated,) if isinstance(deprecated, type) else ()
+)
+if hasattr(warnings, "deprecated"):
     DEPRECATED_TYPES = (*DEPRECATED_TYPES, warnings.deprecated)  # type: ignore
 
 NONE_TYPES: tuple[Any, ...] = (None, NoneType, *(tp[None] for tp in LITERAL_TYPES))
@@ -122,10 +132,10 @@ def is_namedtuple(type_: type[Any]) -> bool:
     """
     from ._utils import lenient_issubclass
 
-    return lenient_issubclass(type_, tuple) and hasattr(type_, '_fields')
+    return lenient_issubclass(type_, tuple) and hasattr(type_, "_fields")
 
 
-test_new_type = typing.NewType('test_new_type', str)
+test_new_type = typing.NewType("test_new_type", str)
 
 
 def is_new_type(type_: type[Any]) -> bool:
@@ -133,14 +143,17 @@ def is_new_type(type_: type[Any]) -> bool:
 
     Can't use isinstance because it fails <3.10.
     """
-    return isinstance(type_, test_new_type.__class__) and hasattr(type_, '__supertype__')  # type: ignore[arg-type]
+    return isinstance(type_, test_new_type.__class__) and hasattr(type_, "__supertype__")  # type: ignore[arg-type]
 
 
 def _check_classvar(v: type[Any] | None) -> bool:
     if v is None:
         return False
 
-    return v.__class__ == typing.ClassVar.__class__ and getattr(v, '_name', None) == 'ClassVar'
+    return (
+        v.__class__ == typing.ClassVar.__class__
+        and getattr(v, "_name", None) == "ClassVar"
+    )
 
 
 def is_classvar(ann_type: type[Any]) -> bool:
@@ -150,7 +163,7 @@ def is_classvar(ann_type: type[Any]) -> bool:
     # this is an ugly workaround for class vars that contain forward references and are therefore themselves
     # forward references, see #3679
     if ann_type.__class__ == typing.ForwardRef and re.match(
-        r'(\w+\.)?ClassVar\[',
+        r"(\w+\.)?ClassVar\[",
         ann_type.__forward_arg__,  # type: ignore
     ):
         return True
@@ -163,7 +176,9 @@ def _check_finalvar(v: type[Any] | None) -> bool:
     if v is None:
         return False
 
-    return v.__class__ == Final.__class__ and (sys.version_info < (3, 8) or getattr(v, '_name', None) == 'Final')
+    return v.__class__ == Final.__class__ and (
+        sys.version_info < (3, 8) or getattr(v, "_name", None) == "Final"
+    )
 
 
 def is_finalvar(ann_type: Any) -> bool:
@@ -190,8 +205,10 @@ def parent_frame_namespace(*, parent_depth: int = 2) -> dict[str, Any] | None:
         return frame.f_locals
 
 
-def add_module_globals(obj: Any, globalns: dict[str, Any] | None = None) -> dict[str, Any]:
-    module_name = getattr(obj, '__module__', None)
+def add_module_globals(
+    obj: Any, globalns: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    module_name = getattr(obj, "__module__", None)
     if module_name:
         try:
             module_globalns = sys.modules[module_name].__dict__
@@ -208,20 +225,24 @@ def add_module_globals(obj: Any, globalns: dict[str, Any] | None = None) -> dict
     return globalns or {}
 
 
-def get_cls_types_namespace(cls: type[Any], parent_namespace: dict[str, Any] | None = None) -> dict[str, Any]:
+def get_cls_types_namespace(
+    cls: type[Any], parent_namespace: dict[str, Any] | None = None
+) -> dict[str, Any]:
     ns = add_module_globals(cls, parent_namespace)
     ns[cls.__name__] = cls
     return ns
 
 
-def get_cls_type_hints_lenient(obj: Any, globalns: dict[str, Any] | None = None) -> dict[str, Any]:
+def get_cls_type_hints_lenient(
+    obj: Any, globalns: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Collect annotations from a class, including those from parent classes.
 
     Unlike `typing.get_type_hints`, this function will not error if a forward reference is not resolvable.
     """
     hints = {}
     for base in reversed(obj.__mro__):
-        ann = base.__dict__.get('__annotations__')
+        ann = base.__dict__.get("__annotations__")
         localns = dict(vars(base))
         if ann is not None and ann is not GetSetDescriptorType:
             for name, value in ann.items():
@@ -229,7 +250,11 @@ def get_cls_type_hints_lenient(obj: Any, globalns: dict[str, Any] | None = None)
     return hints
 
 
-def eval_type_lenient(value: Any, globalns: dict[str, Any] | None = None, localns: dict[str, Any] | None = None) -> Any:
+def eval_type_lenient(
+    value: Any,
+    globalns: dict[str, Any] | None = None,
+    localns: dict[str, Any] | None = None,
+) -> Any:
     """Behaves like typing._eval_type, except it won't raise an error if a forward reference can't be resolved."""
     if value is None:
         value = NoneType
@@ -261,9 +286,7 @@ def eval_type_backport(
                 value, globalns, localns, type_params=type_params
             )
         else:
-            return typing._eval_type(  # type: ignore
-                value, globalns, localns
-            )
+            return typing._eval_type(value, globalns, localns)  # type: ignore
     except TypeError as e:
         if not (isinstance(value, typing.ForwardRef) and is_backport_fixable_error(e)):
             raise
@@ -271,10 +294,10 @@ def eval_type_backport(
             from eval_type_backport import eval_type_backport
         except ImportError:
             raise TypeError(
-                f'You have a type annotation {value.__forward_arg__!r} '
-                f'which makes use of newer typing features than are supported in your version of Python. '
-                f'To handle this error, you should either remove the use of new syntax '
-                f'or install the `eval_type_backport` package.'
+                f"You have a type annotation {value.__forward_arg__!r} "
+                f"which makes use of newer typing features than are supported in your version of Python. "
+                f"To handle this error, you should either remove the use of new syntax "
+                f"or install the `eval_type_backport` package."
             ) from e
 
         return eval_type_backport(value, globalns, localns, try_default=False)
@@ -282,11 +305,17 @@ def eval_type_backport(
 
 def is_backport_fixable_error(e: TypeError) -> bool:
     msg = str(e)
-    return msg.startswith('unsupported operand type(s) for |: ') or "' object is not subscriptable" in msg
+    return (
+        msg.startswith("unsupported operand type(s) for |: ")
+        or "' object is not subscriptable" in msg
+    )
 
 
 def get_function_type_hints(
-    function: Callable[..., Any], *, include_keys: set[str] | None = None, types_namespace: dict[str, Any] | None = None
+    function: Callable[..., Any],
+    *,
+    include_keys: set[str] | None = None,
+    types_namespace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Like `typing.get_type_hints`, but doesn't convert `X` to `Optional[X]` if the default value is `None`, also
     copes with `partial`.
@@ -302,12 +331,12 @@ def get_function_type_hints(
             # `type[...]` is a callable, which returns an instance of itself.
             # At some point, we might even look into the return type of `__new__`
             # if it returns something else.
-            type_hints.setdefault('return', function)
+            type_hints.setdefault("return", function)
         return type_hints
 
     globalns = add_module_globals(function)
     type_hints = {}
-    type_params: tuple[Any] = getattr(function, '__type_params__', ())  # type: ignore
+    type_params: tuple[Any] = getattr(function, "__type_params__", ())  # type: ignore
     for name, value in annotations.items():
         if include_keys is not None and name not in include_keys:
             continue
@@ -316,7 +345,9 @@ def get_function_type_hints(
         elif isinstance(value, str):
             value = _make_forward_ref(value)
 
-        type_hints[name] = eval_type_backport(value, globalns, types_namespace, type_params)
+        type_hints[name] = eval_type_backport(
+            value, globalns, types_namespace, type_params
+        )
 
     return type_hints
 
@@ -403,17 +434,19 @@ else:
         - If two dict arguments are passed, they specify globals and
           locals, respectively.
         """
-        if getattr(obj, '__no_type_check__', None):
+        if getattr(obj, "__no_type_check__", None):
             return {}
         # Classes require a special treatment.
         if isinstance(obj, type):
             hints = {}
             for base in reversed(obj.__mro__):
                 if globalns is None:
-                    base_globals = getattr(sys.modules.get(base.__module__, None), '__dict__', {})
+                    base_globals = getattr(
+                        sys.modules.get(base.__module__, None), "__dict__", {}
+                    )
                 else:
                     base_globals = globalns
-                ann = base.__dict__.get('__annotations__', {})
+                ann = base.__dict__.get("__annotations__", {})
                 if isinstance(ann, types.GetSetDescriptorType):
                     ann = {}
                 base_locals = dict(vars(base)) if localns is None else localns
@@ -429,11 +462,13 @@ else:
                     if value is None:
                         value = type(None)
                     if isinstance(value, str):
-                        value = _make_forward_ref(value, is_argument=False, is_class=True)
+                        value = _make_forward_ref(
+                            value, is_argument=False, is_class=True
+                        )
 
                     value = eval_type_backport(value, base_globals, base_locals)
                     hints[name] = value
-            if not include_extras and hasattr(typing, '_strip_annotations'):
+            if not include_extras and hasattr(typing, "_strip_annotations"):
                 return {
                     k: typing._strip_annotations(t)  # type: ignore
                     for k, t in hints.items()
@@ -447,20 +482,22 @@ else:
             else:
                 nsobj = obj
                 # Find globalns for the unwrapped object.
-                while hasattr(nsobj, '__wrapped__'):
+                while hasattr(nsobj, "__wrapped__"):
                     nsobj = nsobj.__wrapped__
-                globalns = getattr(nsobj, '__globals__', {})
+                globalns = getattr(nsobj, "__globals__", {})
             if localns is None:
                 localns = globalns
         elif localns is None:
             localns = globalns
-        hints = getattr(obj, '__annotations__', None)
+        hints = getattr(obj, "__annotations__", None)
         if hints is None:
             # Return empty annotations for something that _could_ have them.
             if isinstance(obj, typing._allowed_types):  # type: ignore
                 return {}
             else:
-                raise TypeError(f'{obj!r} is not a module, class, method, ' 'or function.')
+                raise TypeError(
+                    f"{obj!r} is not a module, class, method, " "or function."
+                )
         defaults = typing._get_defaults(obj)  # type: ignore
         hints = dict(hints)
         for name, value in hints.items():
@@ -505,4 +542,4 @@ else:
 
 def is_self_type(tp: Any) -> bool:
     """Check if a given class is a Self type (from `typing` or `typing_extensions`)"""
-    return isinstance(tp, typing_base) and getattr(tp, '_name', None) == 'Self'
+    return isinstance(tp, typing_base) and getattr(tp, "_name", None) == "Self"
