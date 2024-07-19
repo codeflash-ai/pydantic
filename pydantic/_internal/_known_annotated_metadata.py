@@ -61,14 +61,7 @@ URL_CONSTRAINTS = {
 }
 
 TEXT_SCHEMA_TYPES = ('str', 'bytes', 'url', 'multi-host-url')
-SEQUENCE_SCHEMA_TYPES = (
-    'list',
-    'tuple',
-    'set',
-    'frozenset',
-    'generator',
-    *TEXT_SCHEMA_TYPES,
-)
+SEQUENCE_SCHEMA_TYPES = ('list', 'tuple', 'set', 'frozenset', 'generator', *TEXT_SCHEMA_TYPES)
 NUMERIC_SCHEMA_TYPES = ('float', 'int', 'date', 'time', 'timedelta', 'datetime')
 
 CONSTRAINTS_TO_ALLOWED_SCHEMAS: dict[str, set[str]] = defaultdict(set)
@@ -87,16 +80,7 @@ constraint_schema_pairings: list[tuple[set[str], tuple[str, ...]]] = [
     (TIMEDELTA_CONSTRAINTS, ('timedelta',)),
     (TIME_CONSTRAINTS, ('time',)),
     # TODO: this is a bit redundant, we could probably avoid some of these
-    (
-        STRICT,
-        (
-            *TEXT_SCHEMA_TYPES,
-            *SEQUENCE_SCHEMA_TYPES,
-            *NUMERIC_SCHEMA_TYPES,
-            'typed-dict',
-            'model',
-        ),
-    ),
+    (STRICT, (*TEXT_SCHEMA_TYPES, *SEQUENCE_SCHEMA_TYPES, *NUMERIC_SCHEMA_TYPES, 'typed-dict', 'model')),
     (UNION_CONSTRAINTS, ('union',)),
     (URL_CONSTRAINTS, ('url', 'multi-host-url')),
     (BOOL_CONSTRAINTS, ('bool',)),
@@ -195,7 +179,7 @@ def _get_at_to_constraint_map() -> dict[type, str]:
     }
 
 
-def apply_known_metadata(annotation: Any, schema: CoreSchema) -> CoreSchema | None:
+def apply_known_metadata(annotation: Any, schema: CoreSchema) -> CoreSchema | None:  # noqa: C901
     """Apply `annotation` to `schema` if it is an annotation we know about (Gt, Le, etc.).
     Otherwise return `None`.
 
@@ -258,11 +242,7 @@ def apply_known_metadata(annotation: Any, schema: CoreSchema) -> CoreSchema | No
                 json_schema_constraint = constraint
             elif constraint in LENGTH_CONSTRAINTS:
                 inner_schema = schema
-                while inner_schema['type'] in {
-                    'function-before',
-                    'function-wrap',
-                    'function-after',
-                }:
+                while inner_schema['type'] in {'function-before', 'function-wrap', 'function-after'}:
                     inner_schema = inner_schema['schema']  # type: ignore
                 inner_schema_type = inner_schema['type']
                 if inner_schema_type == 'list' or (
@@ -273,8 +253,7 @@ def apply_known_metadata(annotation: Any, schema: CoreSchema) -> CoreSchema | No
                     json_schema_constraint = 'minLength' if constraint == 'min_length' else 'maxLength'
 
             schema = cs.no_info_after_validator_function(
-                partial(get_constraint_validator(constraint), **{constraint: value}),
-                schema,
+                partial(get_constraint_validator(constraint), **{constraint: value}), schema
             )
             add_js_update_schema(schema, lambda: {json_schema_constraint: as_jsonable_value(value)})
         elif constraint == 'allow_inf_nan' and value is False:
@@ -289,11 +268,7 @@ def apply_known_metadata(annotation: Any, schema: CoreSchema) -> CoreSchema | No
         if (annotation_type := type(annotation)) in (at_to_constraint_map := _get_at_to_constraint_map()):
             constraint = at_to_constraint_map[annotation_type]
             schema = cs.no_info_after_validator_function(
-                partial(
-                    get_constraint_validator(constraint),
-                    {constraint: getattr(annotation, constraint)},
-                ),
-                schema,
+                partial(get_constraint_validator(constraint), {constraint: getattr(annotation, constraint)}), schema
             )
             continue
         elif isinstance(annotation, at.Predicate):
@@ -320,9 +295,7 @@ def apply_known_metadata(annotation: Any, schema: CoreSchema) -> CoreSchema | No
     return schema
 
 
-def collect_known_metadata(
-    annotations: Iterable[Any],
-) -> tuple[dict[str, Any], list[Any]]:
+def collect_known_metadata(annotations: Iterable[Any]) -> tuple[dict[str, Any], list[Any]]:
     """Split `annotations` into known metadata and unknown annotations.
 
     Args:

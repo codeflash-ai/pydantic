@@ -1,6 +1,5 @@
 """Convert python types to pydantic-core schema."""
 
-from __future__ import annotations
 from __future__ import annotations as _annotations
 
 import collections.abc
@@ -37,36 +36,16 @@ from typing import (
 from warnings import warn
 
 from pydantic_core import CoreSchema, PydanticUndefined, core_schema, to_jsonable_python
-from typing_extensions import (
-    Annotated,
-    Literal,
-    TypeAliasType,
-    TypedDict,
-    get_args,
-    get_origin,
-    is_typeddict,
-)
-
-from pydantic.fields import FieldInfo
+from typing_extensions import Annotated, Literal, TypeAliasType, TypedDict, get_args, get_origin, is_typeddict
 
 from ..aliases import AliasGenerator
 from ..annotated_handlers import GetCoreSchemaHandler, GetJsonSchemaHandler
 from ..config import ConfigDict, JsonDict, JsonEncoder
-from ..errors import (
-    PydanticSchemaGenerationError,
-    PydanticUndefinedAnnotation,
-    PydanticUserError,
-)
+from ..errors import PydanticSchemaGenerationError, PydanticUndefinedAnnotation, PydanticUserError
 from ..json_schema import JsonSchemaValue
 from ..version import version_short
 from ..warnings import PydanticDeprecatedSince20
-from . import (
-    _core_utils,
-    _decorators,
-    _discriminated_union,
-    _known_annotated_metadata,
-    _typing_extra,
-)
+from . import _core_utils, _decorators, _discriminated_union, _known_annotated_metadata, _typing_extra
 from ._config import ConfigWrapper, ConfigWrapperStack
 from ._core_metadata import CoreMetadataHandler, build_metadata_dict
 from ._core_utils import (
@@ -97,12 +76,7 @@ from ._decorators import (
 from ._docs_extraction import extract_docstrings_from_cls
 from ._fields import collect_dataclass_fields, get_type_hints_infer_globalns
 from ._forward_ref import PydanticRecursiveRef
-from ._generics import (
-    get_standard_typevars_map,
-    has_instance_in_type,
-    recursively_defined_type_refs,
-    replace_types,
-)
+from ._generics import get_standard_typevars_map, has_instance_in_type, recursively_defined_type_refs, replace_types
 from ._mock_val_ser import MockCoreSchema
 from ._schema_generation_shared import CallbackGetCoreSchemaHandler
 from ._typing_extra import is_finalvar, is_self_type
@@ -134,12 +108,7 @@ TUPLE_TYPES: list[type] = [tuple, typing.Tuple]
 LIST_TYPES: list[type] = [list, typing.List, collections.abc.MutableSequence]
 SET_TYPES: list[type] = [set, typing.Set, collections.abc.MutableSet]
 FROZEN_SET_TYPES: list[type] = [frozenset, typing.FrozenSet, collections.abc.Set]
-DICT_TYPES: list[type] = [
-    dict,
-    typing.Dict,
-    collections.abc.MutableMapping,
-    collections.abc.Mapping,
-]
+DICT_TYPES: list[type] = [dict, typing.Dict, collections.abc.MutableMapping, collections.abc.Mapping]
 
 
 def check_validator_fields_against_field_name(
@@ -212,9 +181,7 @@ def apply_each_item_validators(
     elif schema['type'] == 'tuple':
         if (variadic_item_index := schema.get('variadic_item_index')) is not None:
             schema['items_schema'][variadic_item_index] = apply_validators(
-                schema['items_schema'][variadic_item_index],
-                each_item_validators,
-                field_name,
+                schema['items_schema'][variadic_item_index], each_item_validators, field_name
             )
     elif is_list_like_schema_with_items_schema(schema):
         inner_schema = schema.get('items_schema', None)
@@ -330,10 +297,7 @@ class TypesNamespaceStack:
 
     @contextmanager
     def push(self, for_type: type[Any]):
-        types_namespace = {
-            **_typing_extra.get_cls_types_namespace(for_type),
-            **(self.tail or {}),
-        }
+        types_namespace = {**_typing_extra.get_cls_types_namespace(for_type), **(self.tail or {})}
         self._types_namespace_stack.append(types_namespace)
         try:
             yield
@@ -656,8 +620,7 @@ class GenerateSchema:
 
     @staticmethod
     def _get_model_title_from_config(
-        model: type[BaseModel | StandardDataclass],
-        config_wrapper: ConfigWrapper | None = None,
+        model: type[BaseModel | StandardDataclass], config_wrapper: ConfigWrapper | None = None
     ) -> str | None:
         """Get the title of a model if `model_title_generator` or `title` are set in the config, else return None"""
         if config_wrapper is None:
@@ -714,8 +677,7 @@ class GenerateSchema:
                 schema = get_schema(source)
             else:
                 schema = get_schema(
-                    source,
-                    CallbackGetCoreSchemaHandler(self._generate_schema_inner, self, ref_mode=ref_mode),
+                    source, CallbackGetCoreSchemaHandler(self._generate_schema_inner, self, ref_mode=ref_mode)
                 )
         # fmt: off
         elif (
@@ -947,12 +909,7 @@ class GenerateSchema:
             return self._subclass_schema(obj)
         elif origin in {typing.Sequence, collections.abc.Sequence}:
             return self._sequence_schema(obj)
-        elif origin in {
-            typing.Iterable,
-            collections.abc.Iterable,
-            typing.Generator,
-            collections.abc.Generator,
-        }:
+        elif origin in {typing.Iterable, collections.abc.Iterable, typing.Generator, collections.abc.Generator}:
             return self._iterable_schema(obj)
         elif origin in (re.Pattern, typing.Pattern):
             return self._pattern_schema(obj)
@@ -1020,9 +977,7 @@ class GenerateSchema:
 
     @staticmethod
     def _apply_alias_generator_to_field_info(
-        alias_generator: Callable[[str], str] | AliasGenerator,
-        field_info: FieldInfo,
-        field_name: str,
+        alias_generator: Callable[[str], str] | AliasGenerator, field_info: FieldInfo, field_name: str
     ) -> None:
         """Apply an alias_generator to aliases on a FieldInfo instance if appropriate.
 
@@ -1115,9 +1070,7 @@ class GenerateSchema:
 
     @staticmethod
     def _apply_field_title_generator_to_field_info(
-        config_wrapper: ConfigWrapper,
-        field_info: FieldInfo | ComputedFieldInfo,
-        field_name: str,
+        config_wrapper: ConfigWrapper, field_info: FieldInfo | ComputedFieldInfo, field_name: str
     ) -> None:
         """Apply a field_title_generator on a FieldInfo or ComputedFieldInfo instance if appropriate
         Args:
@@ -1142,10 +1095,9 @@ class GenerateSchema:
     ) -> _CommonField:
         # Update FieldInfo annotation if appropriate:
         from .. import AliasChoices, AliasPath
+        from ..fields import FieldInfo
 
         if has_instance_in_type(field_info.annotation, (ForwardRef, str)):
-            from ..fields import FieldInfo
-
             types_namespace = self._types_namespace
             if self._typevars_map:
                 types_namespace = (types_namespace or {}).copy()
@@ -1195,15 +1147,9 @@ class GenerateSchema:
         this_field_validators = [v for v in this_field_validators if v not in each_item_validators]
         schema = apply_each_item_validators(schema, each_item_validators, name)
 
+        schema = apply_validators(schema, filter_field_decorator_info_by_field(this_field_validators, name), name)
         schema = apply_validators(
-            schema,
-            filter_field_decorator_info_by_field(this_field_validators, name),
-            name,
-        )
-        schema = apply_validators(
-            schema,
-            filter_field_decorator_info_by_field(decorators.field_validators.values(), name),
-            name,
+            schema, filter_field_decorator_info_by_field(decorators.field_validators.values(), name), name
         )
 
         # the default validator needs to go outside of any other validators
@@ -1213,8 +1159,7 @@ class GenerateSchema:
             schema = wrap_default(field_info, schema)
 
         schema = self._apply_field_serializers(
-            schema,
-            filter_field_decorator_info_by_field(decorators.field_serializers.values(), name),
+            schema, filter_field_decorator_info_by_field(decorators.field_serializers.values(), name)
         )
         self._apply_field_title_generator_to_field_info(self._config_wrapper, field_info, name)
 
@@ -1448,9 +1393,7 @@ class GenerateSchema:
             arguments_schema = core_schema.arguments_schema(
                 [
                     self._generate_parameter_schema(
-                        field_name,
-                        annotation,
-                        default=namedtuple_cls._field_defaults.get(field_name, Parameter.empty),
+                        field_name, annotation, default=namedtuple_cls._field_defaults.get(field_name, Parameter.empty)
                     )
                     for field_name, annotation in annotations.items()
                 ],
@@ -1463,7 +1406,7 @@ class GenerateSchema:
         name: str,
         annotation: type[Any],
         default: Any = Parameter.empty,
-        mode: (Literal['positional_only', 'positional_or_keyword', 'keyword_only'] | None) = None,
+        mode: Literal['positional_only', 'positional_or_keyword', 'keyword_only'] | None = None,
     ) -> core_schema.ArgumentsParameter:
         """Prepare a ArgumentsParameter to represent a field in a namedtuple or function signature."""
         from ..fields import FieldInfo
@@ -1569,19 +1512,14 @@ class GenerateSchema:
             from ._validators import sequence_validator
 
             python_schema = core_schema.chain_schema(
-                [
-                    python_schema,
-                    core_schema.no_info_wrap_validator_function(sequence_validator, list_schema),
-                ],
+                [python_schema, core_schema.no_info_wrap_validator_function(sequence_validator, list_schema)],
             )
 
         serialization = core_schema.wrap_serializer_function_ser_schema(
             serialize_sequence_via_list, schema=item_type_schema, info_arg=True
         )
         return core_schema.json_or_python_schema(
-            json_schema=list_schema,
-            python_schema=python_schema,
-            serialization=serialization,
+            json_schema=list_schema, python_schema=python_schema, serialization=serialization
         )
 
     def _iterable_schema(self, type_: Any) -> core_schema.GeneratorSchema:
@@ -1595,16 +1533,12 @@ class GenerateSchema:
 
         metadata = build_metadata_dict(js_functions=[lambda _1, _2: {'type': 'string', 'format': 'regex'}])
         ser = core_schema.plain_serializer_function_ser_schema(
-            attrgetter('pattern'),
-            when_used='json',
-            return_schema=core_schema.str_schema(),
+            attrgetter('pattern'), when_used='json', return_schema=core_schema.str_schema()
         )
         if pattern_type == typing.Pattern or pattern_type == re.Pattern:
             # bare type
             return core_schema.no_info_plain_validator_function(
-                _validators.pattern_either_validator,
-                serialization=ser,
-                metadata=metadata,
+                _validators.pattern_either_validator, serialization=ser, metadata=metadata
             )
 
         param = self._get_args_resolving_forward_refs(
@@ -1617,9 +1551,7 @@ class GenerateSchema:
             )
         elif param is bytes:
             return core_schema.no_info_plain_validator_function(
-                _validators.pattern_bytes_validator,
-                serialization=ser,
-                metadata=metadata,
+                _validators.pattern_bytes_validator, serialization=ser, metadata=metadata
             )
         else:
             raise PydanticSchemaGenerationError(f'Unable to generate pydantic-core schema for {pattern_type!r}.')
@@ -1746,10 +1678,7 @@ class GenerateSchema:
 
         type_hints = _typing_extra.get_function_type_hints(function, types_namespace=self._types_namespace)
 
-        mode_lookup: dict[
-            _ParameterKind,
-            Literal['positional_only', 'positional_or_keyword', 'keyword_only'],
-        ] = {
+        mode_lookup: dict[_ParameterKind, Literal['positional_only', 'positional_or_keyword', 'keyword_only']] = {
             Parameter.POSITIONAL_ONLY: 'positional_only',
             Parameter.POSITIONAL_OR_KEYWORD: 'positional_or_keyword',
             Parameter.KEYWORD_ONLY: 'keyword_only',
@@ -1854,9 +1783,7 @@ class GenerateSchema:
         alias_generator = self._config_wrapper.alias_generator
         if alias_generator is not None:
             self._apply_alias_generator_to_computed_field_info(
-                alias_generator=alias_generator,
-                computed_field_info=d.info,
-                computed_field_name=d.cls_var_name,
+                alias_generator=alias_generator, computed_field_info=d.info, computed_field_name=d.cls_var_name
             )
         self._apply_field_title_generator_to_field_info(self._config_wrapper, d.info, d.cls_var_name)
 
@@ -1888,10 +1815,7 @@ class GenerateSchema:
 
         metadata = build_metadata_dict(js_annotation_functions=[set_computed_field_metadata])
         return core_schema.computed_field(
-            d.cls_var_name,
-            return_schema=return_type_schema,
-            alias=d.info.alias,
-            metadata=metadata,
+            d.cls_var_name, return_schema=return_type_schema, alias=d.info.alias, metadata=metadata
         )
 
     def _annotated_schema(self, annotated_type: Any) -> core_schema.CoreSchema:
@@ -2120,9 +2044,7 @@ class GenerateSchema:
         return schema
 
     def _apply_model_serializers(
-        self,
-        schema: core_schema.CoreSchema,
-        serializers: Iterable[Decorator[ModelSerializerDecoratorInfo]],
+        self, schema: core_schema.CoreSchema, serializers: Iterable[Decorator[ModelSerializerDecoratorInfo]]
     ) -> core_schema.CoreSchema:
         """Apply model serializers to a schema."""
         ref: str | None = schema.pop('ref', None)  # type: ignore
@@ -2166,48 +2088,30 @@ _VALIDATOR_F_MATCH: Mapping[
     tuple[FieldValidatorModes, Literal['no-info', 'with-info']],
     Callable[[Callable[..., Any], core_schema.CoreSchema, str | None], core_schema.CoreSchema],
 ] = {
-    (
-        'before',
-        'no-info',
-    ): lambda f, schema, _: core_schema.no_info_before_validator_function(f, schema),
-    (
-        'after',
-        'no-info',
-    ): lambda f, schema, _: core_schema.no_info_after_validator_function(f, schema),
-    (
-        'plain',
-        'no-info',
-    ): lambda f, _1, _2: core_schema.no_info_plain_validator_function(f),
-    (
-        'wrap',
-        'no-info',
-    ): lambda f, schema, _: core_schema.no_info_wrap_validator_function(f, schema),
-    (
-        'before',
-        'with-info',
-    ): lambda f, schema, field_name: core_schema.with_info_before_validator_function(f, schema, field_name=field_name),
-    (
-        'after',
-        'with-info',
-    ): lambda f, schema, field_name: core_schema.with_info_after_validator_function(f, schema, field_name=field_name),
-    (
-        'plain',
-        'with-info',
-    ): lambda f, _, field_name: core_schema.with_info_plain_validator_function(f, field_name=field_name),
-    (
-        'wrap',
-        'with-info',
-    ): lambda f, schema, field_name: core_schema.with_info_wrap_validator_function(f, schema, field_name=field_name),
+    ('before', 'no-info'): lambda f, schema, _: core_schema.no_info_before_validator_function(f, schema),
+    ('after', 'no-info'): lambda f, schema, _: core_schema.no_info_after_validator_function(f, schema),
+    ('plain', 'no-info'): lambda f, _1, _2: core_schema.no_info_plain_validator_function(f),
+    ('wrap', 'no-info'): lambda f, schema, _: core_schema.no_info_wrap_validator_function(f, schema),
+    ('before', 'with-info'): lambda f, schema, field_name: core_schema.with_info_before_validator_function(
+        f, schema, field_name=field_name
+    ),
+    ('after', 'with-info'): lambda f, schema, field_name: core_schema.with_info_after_validator_function(
+        f, schema, field_name=field_name
+    ),
+    ('plain', 'with-info'): lambda f, _, field_name: core_schema.with_info_plain_validator_function(
+        f, field_name=field_name
+    ),
+    ('wrap', 'with-info'): lambda f, schema, field_name: core_schema.with_info_wrap_validator_function(
+        f, schema, field_name=field_name
+    ),
 }
 
 
 def apply_validators(
     schema: core_schema.CoreSchema,
-    validators: (
-        Iterable[Decorator[RootValidatorDecoratorInfo]]
-        | Iterable[Decorator[ValidatorDecoratorInfo]]
-        | Iterable[Decorator[FieldValidatorDecoratorInfo]]
-    ),
+    validators: Iterable[Decorator[RootValidatorDecoratorInfo]]
+    | Iterable[Decorator[ValidatorDecoratorInfo]]
+    | Iterable[Decorator[FieldValidatorDecoratorInfo]],
     field_name: str | None,
 ) -> core_schema.CoreSchema:
     """Apply validators to a schema.
@@ -2228,9 +2132,7 @@ def apply_validators(
     return schema
 
 
-def _validators_require_validate_default(
-    validators: Iterable[Decorator[ValidatorDecoratorInfo]],
-) -> bool:
+def _validators_require_validate_default(validators: Iterable[Decorator[ValidatorDecoratorInfo]]) -> bool:
     """In v1, if any of the validators for a field had `always=True`, the default value would be validated.
 
     This serves as an auxiliary function for re-implementing that logic, by looping over a provided
@@ -2305,15 +2207,11 @@ def wrap_default(field_info: FieldInfo, schema: core_schema.CoreSchema) -> core_
     """
     if field_info.default_factory:
         return core_schema.with_default_schema(
-            schema,
-            default_factory=field_info.default_factory,
-            validate_default=field_info.validate_default,
+            schema, default_factory=field_info.default_factory, validate_default=field_info.validate_default
         )
     elif field_info.default is not PydanticUndefined:
         return core_schema.with_default_schema(
-            schema,
-            default=field_info.default,
-            validate_default=field_info.validate_default,
+            schema, default=field_info.default, validate_default=field_info.validate_default
         )
     else:
         return schema
@@ -2351,8 +2249,7 @@ def _extract_get_pydantic_json_schema(tp: Any, schema: CoreSchema) -> GetJsonSch
 
 
 def get_json_schema_update_func(
-    json_schema_update: JsonSchemaValue,
-    json_schema_extra: JsonDict | typing.Callable[[JsonDict], None] | None,
+    json_schema_update: JsonSchemaValue, json_schema_extra: JsonDict | typing.Callable[[JsonDict], None] | None
 ) -> GetJsonSchemaFunction:
     def json_schema_update_func(
         core_schema_or_field: CoreSchemaOrField, handler: GetJsonSchemaHandler
@@ -2365,8 +2262,7 @@ def get_json_schema_update_func(
 
 
 def add_json_schema_extra(
-    json_schema: JsonSchemaValue,
-    json_schema_extra: JsonDict | typing.Callable[[JsonDict], None] | None,
+    json_schema: JsonSchemaValue, json_schema_extra: JsonDict | typing.Callable[[JsonDict], None] | None
 ):
     if isinstance(json_schema_extra, dict):
         json_schema.update(to_jsonable_python(json_schema_extra))
