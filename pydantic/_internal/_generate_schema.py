@@ -1903,44 +1903,45 @@ class GenerateSchema:
     def _apply_single_annotation(self, schema: core_schema.CoreSchema, metadata: Any) -> core_schema.CoreSchema:
         from ..fields import FieldInfo
 
-        if isinstance(metadata, FieldInfo):
-            for field_metadata in metadata.metadata:
-                schema = self._apply_single_annotation(schema, field_metadata)
+        def process_single_annotation(s, m):
+            """Process single annotation with consideration of nested metadata."""
+            if isinstance(m, FieldInfo):
+                for field_metadata in m.metadata:
+                    s = process_single_annotation(s, field_metadata)
+                if m.discriminator is not None:
+                    s = self._apply_discriminator_to_union(s, m.discriminator)
+                return s
 
-            if metadata.discriminator is not None:
-                schema = self._apply_discriminator_to_union(schema, metadata.discriminator)
-            return schema
+            if s['type'] == 'nullable':
+                # for nullable schemas, metadata is automatically applied to the inner schema
+                inner = s.get('schema', core_schema.any_schema())
+                inner = process_single_annotation(inner, m)
+                if inner:
+                    s['schema'] = inner
+                return s
 
-        if schema['type'] == 'nullable':
-            # for nullable schemas, metadata is automatically applied to the inner schema
-            inner = schema.get('schema', core_schema.any_schema())
-            inner = self._apply_single_annotation(inner, metadata)
-            if inner:
-                schema['schema'] = inner
-            return schema
-
-        original_schema = schema
-        ref = schema.get('ref', None)
-        if ref is not None:
-            schema = schema.copy()
-            new_ref = ref + f'_{repr(metadata)}'
-            if new_ref in self.defs.definitions:
-                return self.defs.definitions[new_ref]
-            schema['ref'] = new_ref  # type: ignore
-        elif schema['type'] == 'definition-ref':
-            ref = schema['schema_ref']
-            if ref in self.defs.definitions:
-                schema = self.defs.definitions[ref].copy()
-                new_ref = ref + f'_{repr(metadata)}'
+            original_schema = s
+            ref = s.get('ref', None)
+            if ref is not None:
+                s = s.copy()
+                new_ref = ref + f'_{repr(m)}'
                 if new_ref in self.defs.definitions:
                     return self.defs.definitions[new_ref]
-                schema['ref'] = new_ref  # type: ignore
+                s['ref'] = new_ref  # type: ignore
+            elif s['type'] == 'definition-ref':
+                ref = s['schema_ref']
+                if ref in self.defs.definitions:
+                    s = self.defs.definitions[ref].copy()
+                    new_ref = ref + f'_{repr(m)}'
+                    if new_ref in self.defs.definitions:
+                        return self.defs.definitions[new_ref]
+                    s['ref'] = new_ref  # type: ignore
 
-        maybe_updated_schema = _known_annotated_metadata.apply_known_metadata(metadata, schema.copy())
+            maybe_updated_schema = _known_annotated_metadata.apply_known_metadata(m, s.copy())
 
-        if maybe_updated_schema is not None:
-            return maybe_updated_schema
-        return original_schema
+            return maybe_updated_schema if maybe_updated_schema is not None else original_schema
+
+        return process_single_annotation(schema, metadata)
 
     def _apply_single_annotation_json_schema(
         self, schema: core_schema.CoreSchema, metadata: Any
