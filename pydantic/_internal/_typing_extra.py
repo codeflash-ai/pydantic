@@ -89,7 +89,7 @@ def is_literal_type(type_: type[Any]) -> bool:
 
 
 def is_deprecated_instance(instance: Any) -> TypeGuard[deprecated]:
-    return isinstance(instance, DEPRECATED_TYPES)
+    return type(instance) in DEPRECATED_TYPES
 
 
 def literal_values(type_: type[Any]) -> tuple[Any, ...]:
@@ -505,4 +505,6 @@ else:
 
 def is_self_type(tp: Any) -> bool:
     """Check if a given class is a Self type (from `typing` or `typing_extensions`)"""
-    return isinstance(tp, typing_base) and getattr(tp, '_name', None) == 'Self'
+    if not isinstance(tp, _TypingBase):
+        return False
+    return tp._name == 'Self' if hasattr(tp, '_name') else False
