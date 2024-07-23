@@ -171,6 +171,8 @@ def apply_each_item_validators(
     field_name: str | None,
 ) -> core_schema.CoreSchema:
     # This V1 compatibility shim should eventually be removed
+    if not each_item_validators:
+        return schema
 
     # push down any `each_item=True` validators
     # note that this won't work for any Annotated types that get wrapped by a function validator
@@ -181,21 +183,17 @@ def apply_each_item_validators(
     elif schema['type'] == 'tuple':
         if (variadic_item_index := schema.get('variadic_item_index')) is not None:
             schema['items_schema'][variadic_item_index] = apply_validators(
-                schema['items_schema'][variadic_item_index], each_item_validators, field_name
+                schema['items_schema'][variadic_item_index],
+                each_item_validators,
+                field_name,
             )
     elif is_list_like_schema_with_items_schema(schema):
-        inner_schema = schema.get('items_schema', None)
-        if inner_schema is None:
-            inner_schema = core_schema.any_schema()
+        inner_schema = schema.get('items_schema', core_schema.any_schema())
         schema['items_schema'] = apply_validators(inner_schema, each_item_validators, field_name)
     elif schema['type'] == 'dict':
-        # push down any `each_item=True` validators onto dict _values_
-        # this is super arbitrary but it's the V1 behavior
-        inner_schema = schema.get('values_schema', None)
-        if inner_schema is None:
-            inner_schema = core_schema.any_schema()
+        inner_schema = schema.get('values_schema', core_schema.any_schema())
         schema['values_schema'] = apply_validators(inner_schema, each_item_validators, field_name)
-    elif each_item_validators:
+    else:
         raise TypeError(
             f"`@validator(..., each_item=True)` cannot be applied to fields with a schema of {schema['type']}"
         )
