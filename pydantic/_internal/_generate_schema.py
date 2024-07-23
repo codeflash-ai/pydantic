@@ -2337,12 +2337,12 @@ class _Definitions:
 
 
 def resolve_original_schema(schema: CoreSchema, definitions: dict[str, CoreSchema]) -> CoreSchema | None:
-    if schema['type'] == 'definition-ref':
-        return definitions.get(schema['schema_ref'], None)
-    elif schema['type'] == 'definitions':
+    schema_type = schema['type']
+    if schema_type == 'definition-ref':
+        return definitions.get(schema['schema_ref'])
+    elif schema_type == 'definitions':
         return schema['schema']
-    else:
-        return schema
+    return schema
 
 
 class _FieldNameStack:
