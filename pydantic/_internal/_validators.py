@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 from pydantic_core import PydanticCustomError, core_schema
 from pydantic_core._pydantic_core import PydanticKnownError
+from math import isfinite
 
 
 def sequence_validator(
@@ -284,7 +285,7 @@ def max_length_validator(x: Any, max_length: Any) -> Any:
 
 
 def forbid_inf_nan_check(x: Any) -> Any:
-    if not math.isfinite(x):
+    if not isfinite(x):
         raise PydanticKnownError('finite_number')
     return x
 
