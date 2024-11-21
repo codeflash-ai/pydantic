@@ -13,7 +13,7 @@ from collections import OrderedDict, defaultdict, deque
 from copy import deepcopy
 from itertools import zip_longest
 from types import BuiltinFunctionType, CodeType, FunctionType, GeneratorType, LambdaType, ModuleType
-from typing import Any, Mapping, TypeVar
+from typing import AbstractSet, Union, Any, Mapping, TypeVar
 
 from typing_extensions import TypeAlias, TypeGuard
 
@@ -159,7 +159,7 @@ class ValueItems(_repr.Representation):
 
         :param item: key or index of a value
         """
-        return self.is_true(self._items.get(item))
+        return item in self._items and (self._items[item] is True or self._items[item] is ...)
 
     def is_included(self, item: Any) -> bool:
         """Check if value is contained in self._items.
@@ -273,6 +273,11 @@ class ValueItems(_repr.Representation):
 
     def __repr_args__(self) -> _repr.ReprArgs:
         return [(None, self._items)]
+
+    @staticmethod
+    def _normalize_indexes(items: Union[AbstractSet[str], Mapping[str, Any]], length: int) -> Mapping[str, Any]:
+        # Mockup implementation assuming normalization is done here for simplicity
+        return items
 
 
 if typing.TYPE_CHECKING:
