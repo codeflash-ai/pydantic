@@ -282,7 +282,8 @@ def eval_type_backport(
 
 def is_backport_fixable_error(e: TypeError) -> bool:
     msg = str(e)
-    return msg.startswith('unsupported operand type(s) for |: ') or "' object is not subscriptable" in msg
+    return ('unsupported operand type(s) for |: ' in msg or 
+            "' object is not subscriptable" in msg)
 
 
 def get_function_type_hints(
