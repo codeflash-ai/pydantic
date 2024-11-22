@@ -186,12 +186,15 @@ class _WalkCoreSchema:
         self._schema_type_to_method = self._build_schema_type_to_method()
 
     def _build_schema_type_to_method(self) -> dict[core_schema.CoreSchemaType, Recurse]:
-        mapping: dict[core_schema.CoreSchemaType, Recurse] = {}
-        key: core_schema.CoreSchemaType
-        for key in get_args(core_schema.CoreSchemaType):
-            method_name = f"handle_{key.replace('-', '_')}_schema"
-            mapping[key] = getattr(self, method_name, self._handle_other_schemas)
-        return mapping
+        method_prefix = 'handle_'
+        default_method = self._handle_other_schemas
+        replace_char = '-'
+        get_method = getattr
+        schema_type_to_method = {
+            key: get_method(self, f"{method_prefix}{key.replace(replace_char, '_')}_schema", default_method)
+            for key in get_args(core_schema.CoreSchemaType)
+        }
+        return schema_type_to_method
 
     def walk(self, schema: core_schema.CoreSchema, f: Walk) -> core_schema.CoreSchema:
         return f(schema, self._walk)
@@ -204,8 +207,8 @@ class _WalkCoreSchema:
         return schema
 
     def _handle_other_schemas(self, schema: core_schema.CoreSchema, f: Walk) -> core_schema.CoreSchema:
-        sub_schema = schema.get('schema', None)
-        if sub_schema is not None:
+        sub_schema = schema.get('schema')
+        if sub_schema:
             schema['schema'] = self.walk(sub_schema, f)  # type: ignore
         return schema
 
