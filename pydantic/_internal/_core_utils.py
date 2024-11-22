@@ -514,28 +514,34 @@ def simplify_schema_references(schema: core_schema.CoreSchema) -> core_schema.Co
 
 def _strip_metadata(schema: CoreSchema) -> CoreSchema:
     def strip_metadata(s: CoreSchema, recurse: Recurse) -> CoreSchema:
-        s = s.copy()
-        s.pop('metadata', None)
-        if s['type'] == 'model-fields':
+        s_type = s['type']  # Cache the 'type' field
+
+        if s.get('metadata'):
             s = s.copy()
-            s['fields'] = {k: v.copy() for k, v in s['fields'].items()}
-            for field_name, field_schema in s['fields'].items():
-                field_schema.pop('metadata', None)
-                s['fields'][field_name] = field_schema
-            computed_fields = s.get('computed_fields', None)
+            s.pop('metadata', None)
+
+        if s_type == 'model-fields':
+            fields = s.get('fields')
+            if fields:
+                s = s.copy()
+                s['fields'] = {k: {k2: v2 for k2, v2 in v.items() if k2 != 'metadata'} for k, v in fields.items()}
+
+            computed_fields = s.get('computed_fields')
             if computed_fields:
-                s['computed_fields'] = [cf.copy() for cf in computed_fields]
-                for cf in computed_fields:
-                    cf.pop('metadata', None)
+                s = s.copy()
+                s['computed_fields'] = [{k: v for k, v in cf.items() if k != 'metadata'} for cf in computed_fields]
             else:
                 s.pop('computed_fields', None)
-        elif s['type'] == 'model':
+
+        if s_type == 'model':
+            s = s.copy()  # Copy only if needed
             # remove some defaults
-            if s.get('custom_init', True) is False:
-                s.pop('custom_init')
-            if s.get('root_model', True) is False:
-                s.pop('root_model')
-            if {'title'}.issuperset(s.get('config', {}).keys()):
+            if s.get('custom_init') is False:
+                s.pop('custom_init', None)
+            if s.get('root_model') is False:
+                s.pop('root_model', None)
+            config = s.get('config')
+            if config and {'title'}.issuperset(config.keys()):
                 s.pop('config', None)
 
         return recurse(s, strip_metadata)
