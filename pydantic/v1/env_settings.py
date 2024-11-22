@@ -21,8 +21,7 @@ class SettingsError(ValueError):
 
 
 class BaseSettings(BaseModel):
-    """
-    Base class for settings, allowing values to be overridden by environment variables.
+    """Base class for settings, allowing values to be overridden by environment variables.
 
     This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
     Heroku and any 12 factor app design.
@@ -163,10 +162,8 @@ class EnvSettingsSource:
         self.env_nested_delimiter: Optional[str] = env_nested_delimiter
         self.env_prefix_len: int = env_prefix_len
 
-    def __call__(self, settings: BaseSettings) -> Dict[str, Any]:  # noqa C901
-        """
-        Build environment variables suitable for passing to the Model.
-        """
+    def __call__(self, settings: BaseSettings) -> Dict[str, Any]:
+        """Build environment variables suitable for passing to the Model."""
         d: Dict[str, Any] = {}
 
         if settings.__config__.case_sensitive:
@@ -212,26 +209,24 @@ class EnvSettingsSource:
 
     def _read_env_files(self, case_sensitive: bool) -> Dict[str, Optional[str]]:
         env_files = self.env_file
-        if env_files is None:
+        if not env_files:
             return {}
 
         if isinstance(env_files, (str, os.PathLike)):
             env_files = [env_files]
 
         dotenv_vars = {}
+        read_file_params = {'encoding': self.env_file_encoding, 'case_sensitive': case_sensitive}
+
         for env_file in env_files:
             env_path = Path(env_file).expanduser()
             if env_path.is_file():
-                dotenv_vars.update(
-                    read_env_file(env_path, encoding=self.env_file_encoding, case_sensitive=case_sensitive)
-                )
+                dotenv_vars.update(read_env_file(env_path, **read_file_params))
 
         return dotenv_vars
 
     def field_is_complex(self, field: ModelField) -> Tuple[bool, bool]:
-        """
-        Find out if a field is complex, and if so whether JSON errors should be ignored
-        """
+        """Find out if a field is complex, and if so whether JSON errors should be ignored"""
         if lenient_issubclass(field.annotation, JsonWrapper):
             return False, False
 
@@ -245,8 +240,7 @@ class EnvSettingsSource:
         return True, allow_parse_failure
 
     def explode_env_vars(self, field: ModelField, env_vars: Mapping[str, Optional[str]]) -> Dict[str, Any]:
-        """
-        Process env_vars and extract the values of keys containing env_nested_delimiter into nested dictionaries.
+        """Process env_vars and extract the values of keys containing env_nested_delimiter into nested dictionaries.
 
         This is applied to a single field, hence filtering by env_var prefix.
         """
@@ -279,9 +273,7 @@ class SecretsSettingsSource:
         self.secrets_dir: Optional[StrPath] = secrets_dir
 
     def __call__(self, settings: BaseSettings) -> Dict[str, Any]:
-        """
-        Build fields from "secrets" files.
-        """
+        """Build fields from "secrets" files."""
         secrets: Dict[str, Optional[str]] = {}
 
         if self.secrets_dir is None:
@@ -331,17 +323,14 @@ def read_env_file(
     except ImportError as e:
         raise ImportError('python-dotenv is not installed, run `pip install pydantic[dotenv]`') from e
 
-    file_vars: Dict[str, Optional[str]] = dotenv_values(file_path, encoding=encoding or 'utf8')
+    file_vars = dotenv_values(file_path, encoding=encoding or 'utf8')
     if not case_sensitive:
-        return {k.lower(): v for k, v in file_vars.items()}
-    else:
-        return file_vars
+        file_vars = {k.lower(): v for k, v in file_vars.items()}
+    return file_vars
 
 
 def find_case_path(dir_path: Path, file_name: str, case_sensitive: bool) -> Optional[Path]:
-    """
-    Find a file within path's directory matching filename, optionally ignoring case.
-    """
+    """Find a file within path's directory matching filename, optionally ignoring case."""
     for f in dir_path.iterdir():
         if f.name == file_name:
             return f
