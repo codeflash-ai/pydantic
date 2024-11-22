@@ -310,13 +310,11 @@ class TypeAdapter(Generic[T]):
         return self._core_schema
 
     @cached_property
-    @_frame_depth(2)  # +2 for @cached_property + validator(self)
     def validator(self) -> SchemaValidator | PluggableSchemaValidator:
         """The pydantic-core SchemaValidator used to validate instances of the model."""
         if not isinstance(self._validator, (SchemaValidator, PluggableSchemaValidator)):
-            self._init_core_attrs(rebuild_mocks=True)  # Do not expose MockValSer from public function
-        assert isinstance(self._validator, (SchemaValidator, PluggableSchemaValidator))
-        return self._validator
+            self._init_core_attrs(rebuild_mocks=True)
+        return cast(SchemaValidator | PluggableSchemaValidator, self._validator)
 
     @cached_property
     @_frame_depth(2)  # +2 for @cached_property + serializer(self)
@@ -390,7 +388,6 @@ class TypeAdapter(Generic[T]):
         """
         return self.validator.validate_json(data, strict=strict, context=context)
 
-    @_frame_depth(1)
     def validate_strings(self, obj: Any, /, *, strict: bool | None = None, context: dict[str, Any] | None = None) -> T:
         """Validate object contains string data against the model.
 
