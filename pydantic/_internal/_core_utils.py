@@ -120,7 +120,7 @@ def get_ref(s: core_schema.CoreSchema) -> None | str:
 
 
 def collect_definitions(schema: core_schema.CoreSchema) -> dict[str, core_schema.CoreSchema]:
-    defs: dict[str, CoreSchema] = {}
+    defs = {}
 
     def _record_valid_refs(s: core_schema.CoreSchema, recurse: Recurse) -> core_schema.CoreSchema:
         ref = get_ref(s)
@@ -137,21 +137,18 @@ def define_expected_missing_refs(
     schema: core_schema.CoreSchema, allowed_missing_refs: set[str]
 ) -> core_schema.CoreSchema | None:
     if not allowed_missing_refs:
-        # in this case, there are no missing refs to potentially substitute, so there's no need to walk the schema
-        # this is a common case (will be hit for all non-generic models), so it's worth optimizing for
         return None
 
-    refs = collect_definitions(schema).keys()
+    refs = set(collect_definitions(schema))
+    expected_missing_refs = allowed_missing_refs - refs
 
-    expected_missing_refs = allowed_missing_refs.difference(refs)
     if expected_missing_refs:
-        definitions: list[core_schema.CoreSchema] = [
-            # TODO: Replace this with a (new) CoreSchema that, if present at any level, makes validation fail
-            #   Issue: https://github.com/pydantic/pydantic-core/issues/619
+        definitions = [
             core_schema.none_schema(ref=ref, metadata={HAS_INVALID_SCHEMAS_METADATA_KEY: True})
             for ref in expected_missing_refs
         ]
         return core_schema.definitions_schema(schema, definitions)
+
     return None
 
 
