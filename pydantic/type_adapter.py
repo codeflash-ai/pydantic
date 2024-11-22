@@ -310,11 +310,10 @@ class TypeAdapter(Generic[T]):
         return self._core_schema
 
     @cached_property
-    @_frame_depth(2)  # +2 for @cached_property + validator(self)
     def validator(self) -> SchemaValidator | PluggableSchemaValidator:
         """The pydantic-core SchemaValidator used to validate instances of the model."""
         if not isinstance(self._validator, (SchemaValidator, PluggableSchemaValidator)):
-            self._init_core_attrs(rebuild_mocks=True)  # Do not expose MockValSer from public function
+            self._init_core_attrs(rebuild_mocks=True)
         assert isinstance(self._validator, (SchemaValidator, PluggableSchemaValidator))
         return self._validator
 
@@ -404,7 +403,6 @@ class TypeAdapter(Generic[T]):
         """
         return self.validator.validate_strings(obj, strict=strict, context=context)
 
-    @_frame_depth(1)
     def get_default_value(self, *, strict: bool | None = None, context: dict[str, Any] | None = None) -> Some[T] | None:
         """Get the default value for the wrapped type.
 
@@ -599,3 +597,8 @@ class TypeAdapter(Generic[T]):
             json_schema['description'] = description
 
         return json_schemas_map, json_schema
+
+    def _get_module_name(self) -> str:
+        import sys
+        f = sys._getframe(2)
+        return f.f_globals.get('__name__', '')
