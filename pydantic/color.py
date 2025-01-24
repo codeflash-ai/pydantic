@@ -177,17 +177,12 @@ class Color(_repr.Representation):
             A tuple that contains the values of the red, green, and blue channels in the range 0 to 255.
                 If alpha is included, it is in the range 0 to 1.
         """
-        r, g, b = (float_to_255(c) for c in self._rgba[:3])
+        r, g, b = map(float_to_255, self._rgba[:3])
+        alpha_value = self._alpha_float()
+
         if alpha is None:
-            if self._rgba.alpha is None:
-                return r, g, b
-            else:
-                return r, g, b, self._alpha_float()
-        elif alpha:
-            return r, g, b, self._alpha_float()
-        else:
-            # alpha is False
-            return r, g, b
+            return (r, g, b) if self._rgba.alpha is None else (r, g, b, alpha_value)
+        return (r, g, b, alpha_value) if alpha else (r, g, b)
 
     def as_hsl(self) -> str:
         """Color as an `hsl(<h>, <s>, <l>)` or `hsl(<h>, <s>, <l>, <a>)` string."""
@@ -448,7 +443,9 @@ def float_to_255(c: float) -> int:
     Raises:
         ValueError: If the given float value is outside the acceptable range of 0 to 1 (inclusive).
     """
-    return int(round(c * 255))
+    if not (0.0 <= c <= 1.0):
+        raise ValueError('Input float must be within the range [0, 1].')
+    return round(c * 255)
 
 
 COLORS_BY_NAME = {
