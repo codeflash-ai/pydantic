@@ -42,11 +42,12 @@ class Representation:
         * name - value pairs, e.g.: `[('foo_name', 'foo'), ('bar_name', ['b', 'a', 'r'])]`
         * or, just values, e.g.: `[(None, 'foo'), (None, ['b', 'a', 'r'])]`
         """
-        attrs_names = self.__slots__
-        if not attrs_names and hasattr(self, '__dict__'):
-            attrs_names = self.__dict__.keys()
-        attrs = ((s, getattr(self, s)) for s in attrs_names)
-        return [(a, v) for a, v in attrs if v is not None]
+        if not self.__slots__:
+            if hasattr(self, '__dict__'):
+                return [(k, v) for k, v in self.__dict__.items() if v is not None]
+            return []
+
+        return [(s, getattr(self, s)) for s in self.__slots__ if getattr(self, s) is not None]
 
     def __repr_name__(self) -> str:
         """Name of the instance's class, used in __repr__."""
