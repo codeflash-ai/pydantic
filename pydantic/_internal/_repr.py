@@ -45,15 +45,17 @@ class Representation:
         attrs_names = self.__slots__
         if not attrs_names and hasattr(self, '__dict__'):
             attrs_names = self.__dict__.keys()
-        attrs = ((s, getattr(self, s)) for s in attrs_names)
-        return [(a, v) for a, v in attrs if v is not None]
+        return [(s, getattr(self, s)) for s in attrs_names if (v := getattr(self, s)) is not None]
 
     def __repr_name__(self) -> str:
         """Name of the instance's class, used in __repr__."""
         return self.__class__.__name__
 
     def __repr_str__(self, join_str: str) -> str:
-        return join_str.join(repr(v) if a is None else f'{a}={v!r}' for a, v in self.__repr_args__())
+        parts = []
+        for a, v in self.__repr_args__():
+            parts.append(f'{v!r}' if a is None else f'{a}={v!r}')
+        return join_str.join(parts)
 
     def __pretty__(self, fmt: typing.Callable[[Any], Any], **kwargs: Any) -> typing.Generator[Any, None, None]:
         """Used by devtools (https://python-devtools.helpmanual.io/) to pretty print objects."""
