@@ -144,14 +144,20 @@ class Color(_repr.Representation):
         Returns:
             The hexadecimal representation of the color.
         """
-        values = [float_to_255(c) for c in self._rgba[:3]]
-        if self._rgba.alpha is not None:
-            values.append(float_to_255(self._rgba.alpha))
+        rgba_values = self._rgba[:3]
+        alpha = self._rgba.alpha
+        values = [float_to_255(c) for c in rgba_values]
+
+        if alpha is not None:
+            values.append(float_to_255(alpha))
 
         as_hex = ''.join(f'{v:02x}' for v in values)
-        if all(c in repeat_colors for c in values):
-            as_hex = ''.join(as_hex[c] for c in range(0, len(as_hex), 2))
-        return '#' + as_hex
+        repeat = all(v in repeat_colors for v in values)
+
+        if repeat:
+            as_hex = as_hex[0::2]  # picking every second character
+
+        return f'#{as_hex}'
 
     def as_rgb(self) -> str:
         """Color as an `rgb(<r>, <g>, <b>)` or `rgba(<r>, <g>, <b>, <a>)` string."""
@@ -448,6 +454,8 @@ def float_to_255(c: float) -> int:
     Raises:
         ValueError: If the given float value is outside the acceptable range of 0 to 1 (inclusive).
     """
+    if not 0 <= c <= 1:
+        raise ValueError('Value must be between 0 and 1 inclusive')
     return int(round(c * 255))
 
 
