@@ -31,7 +31,6 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    overload,
 )
 from warnings import warn
 
@@ -551,47 +550,15 @@ class GenerateSchema:
         obj: Any,
         from_dunder_get_core_schema: bool = True,
     ) -> core_schema.CoreSchema:
-        """Generate core schema.
-
-        Args:
-            obj: The object to generate core schema for.
-            from_dunder_get_core_schema: Whether to generate schema from either the
-                `__get_pydantic_core_schema__` function or `__pydantic_core_schema__` property.
-
-        Returns:
-            The generated core schema.
-
-        Raises:
-            PydanticUndefinedAnnotation:
-                If it is not possible to evaluate forward reference.
-            PydanticSchemaGenerationError:
-                If it is not possible to generate pydantic-core schema.
-            TypeError:
-                - If `alias_generator` returns a disallowed type (must be str, AliasPath or AliasChoices).
-                - If V1 style validator with `each_item=True` applied on a wrong field.
-            PydanticUserError:
-                - If `typing.TypedDict` is used instead of `typing_extensions.TypedDict` on Python < 3.12.
-                - If `__modify_schema__` method is used instead of `__get_pydantic_json_schema__`.
-        """
-        schema: CoreSchema | None = None
-
+        """Generate core schema."""
         if from_dunder_get_core_schema:
-            from_property = self._generate_schema_from_property(obj, obj)
-            if from_property is not None:
-                schema = from_property
+            schema = self._generate_schema_from_property(obj, obj)
+            if schema is not None:
+                return self._finalize_schema(obj, schema)
 
-        if schema is None:
-            schema = self._generate_schema_inner(obj)
-
-        metadata_js_function = _extract_get_pydantic_json_schema(obj, schema)
-        if metadata_js_function is not None:
-            metadata_schema = resolve_original_schema(schema, self.defs.definitions)
-            if metadata_schema:
-                self._add_js_function(metadata_schema, metadata_js_function)
-
-        schema = _add_custom_serialization_from_json_encoders(self._config_wrapper.json_encoders, obj, schema)
-
-        return schema
+        # Attempt to generate schema if not done by the property method
+        schema = self._generate_schema_inner(obj)
+        return self._finalize_schema(obj, schema)
 
     def _model_schema(self, cls: type[BaseModel]) -> core_schema.CoreSchema:
         """Generate schema for a Pydantic model."""
@@ -806,19 +773,29 @@ class GenerateSchema:
 
         return obj
 
-    @overload
-    def _get_args_resolving_forward_refs(self, obj: Any, required: Literal[True]) -> tuple[Any, ...]: ...
+    def _get_args_resolving_forward_refs(self, obj: Any, required: Literal[True]) -> tuple[Any, ...]:
+        args = get_args(obj)
+        if args:
+            return tuple([self._resolve_forward_ref(a) if isinstance(a, ForwardRef) else a for a in args])
+        if required:  # pragma: no cover
+            raise TypeError(f'Expected {obj} to have generic parameters but it had none')
+        return None
 
-    @overload
-    def _get_args_resolving_forward_refs(self, obj: Any) -> tuple[Any, ...] | None: ...
+    def _get_args_resolving_forward_refs(self, obj: Any) -> tuple[Any, ...] | None:
+        args = get_args(obj)
+        if args:
+            return tuple([self._resolve_forward_ref(a) if isinstance(a, ForwardRef) else a for a in args])
+        if required:  # pragma: no cover
+            raise TypeError(f'Expected {obj} to have generic parameters but it had none')
+        return None
 
     def _get_args_resolving_forward_refs(self, obj: Any, required: bool = False) -> tuple[Any, ...] | None:
         args = get_args(obj)
         if args:
-            args = tuple([self._resolve_forward_ref(a) if isinstance(a, ForwardRef) else a for a in args])
-        elif required:  # pragma: no cover
+            return tuple([self._resolve_forward_ref(a) if isinstance(a, ForwardRef) else a for a in args])
+        if required:  # pragma: no cover
             raise TypeError(f'Expected {obj} to have generic parameters but it had none')
-        return args
+        return None
 
     def _get_first_arg_or_any(self, obj: Any) -> Any:
         args = self._get_args_resolving_forward_refs(obj)
@@ -1572,7 +1549,7 @@ class GenerateSchema:
     def _union_is_subclass_schema(self, union_type: Any) -> core_schema.CoreSchema:
         """Generate schema for `Type[Union[X, ...]]`."""
         args = self._get_args_resolving_forward_refs(union_type, required=True)
-        return core_schema.union_schema([self.generate_schema(typing.Type[args]) for args in args])
+        return core_schema.union_schema([self.generate_schema(arg) for arg in args])
 
     def _subclass_schema(self, type_: Any) -> core_schema.CoreSchema:
         """Generate schema for a Type, e.g. `Type[int]`."""
@@ -2179,6 +2156,15 @@ class GenerateSchema:
         if ref:
             schema['ref'] = ref  # type: ignore
         return schema
+
+    def _finalize_schema(self, obj: Any, schema: CoreSchema) -> core_schema.CoreSchema:
+        metadata_js_function = _extract_get_pydantic_json_schema(obj, schema)
+        if metadata_js_function:
+            metadata_schema = resolve_original_schema(schema, self.defs.definitions)
+            if metadata_schema:
+                self._add_js_function(metadata_schema, metadata_js_function)
+
+        return _add_custom_serialization_from_json_encoders(self._config_wrapper.json_encoders, obj, schema)
 
 
 _VALIDATOR_F_MATCH: Mapping[
