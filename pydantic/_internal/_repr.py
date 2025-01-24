@@ -53,7 +53,17 @@ class Representation:
         return self.__class__.__name__
 
     def __repr_str__(self, join_str: str) -> str:
-        return join_str.join(repr(v) if a is None else f'{a}={v!r}' for a, v in self.__repr_args__())
+        repr_args = self.__repr_args__()
+        if len(repr_args) == 0:
+            return ''
+
+        parts = []
+        for a, v in repr_args:
+            if a is None:
+                parts.append(repr(v))
+            else:
+                parts.append(f'{a}={v!r}')
+        return join_str.join(parts)
 
     def __pretty__(self, fmt: typing.Callable[[Any], Any], **kwargs: Any) -> typing.Generator[Any, None, None]:
         """Used by devtools (https://python-devtools.helpmanual.io/) to pretty print objects."""
