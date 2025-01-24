@@ -121,8 +121,7 @@ def url_regex() -> Pattern[str]:
 
 
 def multi_host_url_regex() -> Pattern[str]:
-    """
-    Compiled multi host url regex.
+    """Compiled multi host url regex.
 
     Additionally to `url_regex` it allows to match multiple hosts.
     E.g. host1.db.net,host2.db.net
@@ -144,7 +143,7 @@ def ascii_domain_regex() -> Pattern[str]:
         ascii_chunk = r'[_0-9a-z](?:[-_0-9a-z]{0,61}[_0-9a-z])?'
         ascii_domain_ending = r'(?P<tld>\.[a-z]{2,63})?\.?'
         _ascii_domain_regex_cache = re.compile(
-            fr'(?:{ascii_chunk}\.)*?{ascii_chunk}{ascii_domain_ending}', re.IGNORECASE
+            rf'(?:{ascii_chunk}\.)*?{ascii_chunk}{ascii_domain_ending}', re.IGNORECASE
         )
     return _ascii_domain_regex_cache
 
@@ -154,7 +153,7 @@ def int_domain_regex() -> Pattern[str]:
     if _int_domain_regex_cache is None:
         int_chunk = r'[_0-9a-\U00040000](?:[-_0-9a-\U00040000]{0,61}[_0-9a-\U00040000])?'
         int_domain_ending = r'(?P<tld>(\.[^\W\d_]{2,63})|(\.(?:xn--)[_0-9a-z-]{2,63}))?\.?'
-        _int_domain_regex_cache = re.compile(fr'(?:{int_chunk}\.)*?{int_chunk}{int_domain_ending}', re.IGNORECASE)
+        _int_domain_regex_cache = re.compile(rf'(?:{int_chunk}\.)*?{int_chunk}{int_domain_ending}', re.IGNORECASE)
     return _int_domain_regex_cache
 
 
@@ -225,35 +224,29 @@ class AnyUrl(str):
         fragment: Optional[str] = None,
         **_kwargs: str,
     ) -> str:
-        parts = Parts(
-            scheme=scheme,
-            user=user,
-            password=password,
-            host=host,
-            port=port,
-            path=path,
-            query=query,
-            fragment=fragment,
-            **_kwargs,  # type: ignore[misc]
-        )
+        # Preallocate list of parts to avoid repeated string concatenation
+        parts = [scheme, '://']
 
-        url = scheme + '://'
         if user:
-            url += user
-        if password:
-            url += ':' + password
-        if user or password:
-            url += '@'
-        url += host
-        if port and ('port' not in cls.hidden_parts or cls.get_default_parts(parts).get('port') != port):
-            url += ':' + port
+            parts.append(user)
+            if password:
+                parts.extend([':', password])
+            parts.append('@')
+
+        parts.append(host)
+
+        if port and ('port' not in cls.hidden_parts or cls.get_default_parts({}).get('port') != port):
+            parts.extend([':', port])
+
         if path:
-            url += path
+            parts.append(path)
         if query:
-            url += '?' + query
+            parts.extend(['?', query])
         if fragment:
-            url += '#' + fragment
-        return url
+            parts.extend(['#', fragment])
+
+        # Join all parts at once to generate the URL
+        return ''.join(parts)
 
     @classmethod
     def __modify_schema__(cls, field_schema: Dict[str, Any]) -> None:
@@ -287,8 +280,7 @@ class AnyUrl(str):
 
     @classmethod
     def _build_url(cls, m: Match[str], url: str, parts: 'Parts') -> 'AnyUrl':
-        """
-        Validate hosts and build the AnyUrl object. Split from `validate` so this method
+        """Validate hosts and build the AnyUrl object. Split from `validate` so this method
         can be altered in `MultiHostDsn`.
         """
         host, tld, host_type, rebuild = cls.validate_host(parts)
@@ -318,8 +310,7 @@ class AnyUrl(str):
 
     @classmethod
     def validate_parts(cls, parts: 'Parts', validate_port: bool = True) -> 'Parts':
-        """
-        A method used to validate parts of a URL.
+        """A method used to validate parts of a URL.
         Could be overridden to set default values for parts if missing
         """
         scheme = parts['scheme']
@@ -437,7 +428,7 @@ class MultiHostDsn(AnyUrl):
 
     @classmethod
     def _build_url(cls, m: Match[str], url: str, parts: 'Parts') -> 'MultiHostDsn':
-        hosts_parts: List['HostParts'] = []
+        hosts_parts: List[HostParts] = []
         host_re = host_regex()
         for host in m.groupdict()['hosts'].split(','):
             d: Parts = host_re.match(host).groupdict()  # type: ignore
@@ -709,8 +700,8 @@ A somewhat arbitrary but very generous number compared to what is allowed by mos
 
 
 def validate_email(value: Union[str]) -> Tuple[str, str]:
-    """
-    Email address validation using https://pypi.org/project/email-validator/
+    """Email address validation using https://pypi.org/project/email-validator/
+
     Notes:
     * raw ip address (literal) domain parts are not allowed.
     * "John Doe <local_part@domain.com>" style "pretty" email addresses are processed
